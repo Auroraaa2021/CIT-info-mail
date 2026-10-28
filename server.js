@@ -34,16 +34,20 @@ app.use(express.static("public"));
 // =======================================================
 
 function getGoogleSheetsClient() {
-  const keyFile = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+  const clientEmail = process.env.GOOGLE_CLIENT_EMAIL;
+  const privateKey = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, "\n");
 
-  if (!keyFile) {
+  if (!clientEmail || !privateKey) {
     throw new Error(
-      "Google credentials are not configured. Set GOOGLE_APPLICATION_CREDENTIALS to the path of your service-account JSON file."
+      "Google credentials are not configured. Set GOOGLE_CLIENT_EMAIL and GOOGLE_PRIVATE_KEY in the deployment environment."
     );
   }
 
   const auth = new google.auth.GoogleAuth({
-    keyFile,
+    credentials: {
+      client_email: clientEmail,
+      private_key: privateKey
+    },
     scopes: [
       "https://www.googleapis.com/auth/spreadsheets.readonly"
     ]
