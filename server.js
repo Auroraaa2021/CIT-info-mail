@@ -34,8 +34,16 @@ app.use(express.static("public"));
 // =======================================================
 
 function getGoogleSheetsClient() {
+  const keyFile = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+
+  if (!keyFile) {
+    throw new Error(
+      "Google credentials are not configured. Set GOOGLE_APPLICATION_CREDENTIALS to the path of your service-account JSON file."
+    );
+  }
+
   const auth = new google.auth.GoogleAuth({
-    keyFile: "/Users/chenxi/Documents/CIT-info-mail/cit-info-mail-2b59f932a9ce.json",
+    keyFile,
     scopes: [
       "https://www.googleapis.com/auth/spreadsheets.readonly"
     ]
