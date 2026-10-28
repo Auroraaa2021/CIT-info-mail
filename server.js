@@ -15,7 +15,7 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use(
   session({
-    secret: process.env.SESSION_SECRET,
+    secret: process.env.SESSION_SECRET || "cit-info-mail-development-session-secret",
     resave: false,
     saveUninitialized: false,
     cookie: {
