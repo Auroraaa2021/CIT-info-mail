@@ -894,12 +894,18 @@ app.post("/api/send", async (req, res) => {
 // START SERVER
 // =======================================================
 
-app.listen(
-  PORT,
-  () => {
-    console.log(
-      `CIT Info-Mail running at ` +
-      `http://localhost:${PORT}`
-    );
-  }
-);
+// Vercel imports the Express app as a serverless function. Keep the local
+// listener for `npm run dev` and `npm start` without starting it in Vercel.
+if (!process.env.VERCEL) {
+  app.listen(
+    PORT,
+    () => {
+      console.log(
+        `CIT Info-Mail running at ` +
+        `http://localhost:${PORT}`
+      );
+    }
+  );
+}
+
+export default app;
