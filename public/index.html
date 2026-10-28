@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>CIT Info-Mail Generator</title>
+
+  <style>
+
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      background: #f5f5f5;
+      margin: 0;
+      padding: 40px;
+      color: #222;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: auto;
+    }
+
+    .panel {
+      background: white;
+      padding: 24px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+
+    input {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 10px;
+      font-size: 15px;
+      margin-top: 6px;
+      margin-bottom: 14px;
+    }
+
+    button,
+    .button {
+      display: inline-block;
+      padding: 10px 18px;
+      border: none;
+      background: #0065bd;
+      color: white;
+      text-decoration: none;
+      cursor: pointer;
+      border-radius: 4px;
+      font-size: 14px;
+      margin-right: 8px;
+      margin-bottom: 8px;
+    }
+
+    button.danger {
+      background: #b00020;
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    #preview {
+      width: 100%;
+      height: 650px;
+      border: 1px solid #ccc;
+      background: white;
+    }
+
+    #status {
+      margin-top: 12px;
+      font-weight: bold;
+    }
+
+    .stats {
+      margin: 15px 0;
+    }
+
+    .stats span {
+      margin-right: 25px;
+    }
+
+  </style>
+
+</head>
+
+
+<body>
+
+<div class="container">
+
+  <div class="panel">
+
+    <h1>
+      CIT Info-Mail
+    </h1>
+
+    <label>
+      Google Sheet URL
+    </label>
+
+    <input
+      id="sheetUrl"
+      placeholder="https://docs.google.com/spreadsheets/d/..."
+    >
+
+    <button onclick="loadNewsletter()">
+      Load Newsletter
+    </button>
+
+    <button
+        id="downloadButton"
+        onclick="downloadHtml()"
+        disabled
+    >
+        Download HTML
+    </button>
+
+    <div id="status"></div>
+
+  </div>
+
+
+  <div
+    class="panel"
+    id="newsletterPanel"
+    style="display:none;"
+  >
+
+    <h2 id="emailTitle"></h2>
+
+    <div class="stats">
+
+      <span>
+        Entries:
+        <strong id="entryCount"></strong>
+      </span>
+
+      <span>
+        Categories:
+        <strong id="categoryCount"></strong>
+      </span>
+
+      <span>
+        Recipients:
+        <strong id="recipientCount"></strong>
+      </span>
+
+    </div>
+
+
+    <h3>
+      Preview
+    </h3>
+
+    <iframe
+      id="preview"
+    ></iframe>
+
+
+    <hr>
+
+
+    <h3>
+      Test email
+    </h3>
+
+    <input
+      id="testAddress"
+      type="email"
+      placeholder="your.name@tum.de"
+    >
+
+    <button onclick="sendTest()">
+      Send Test Email
+    </button>
+
+
+    <hr>
+
+
+    <h3>
+      Final Send
+    </h3>
+
+    <p>
+      This will send the current newsletter
+      to every address in the
+      <strong>list</strong> tab.
+    </p>
+
+    <button
+      class="danger"
+      onclick="sendNewsletter()"
+    >
+      Send Newsletter
+    </button>
+
+  </div>
+
+</div>
+
+
+<script>
+
+let currentSheetUrl = "";
+let currentHtml = "";
+let currentTitle = "";
+
+async function loadNewsletter() {
+
+  const status =
+    document.getElementById(
+      "status"
+    );
+
+
+  const sheetUrl =
+    document.getElementById(
+      "sheetUrl"
+    ).value.trim();
+
+
+  if (!sheetUrl) {
+
+    alert(
+      "Please enter the Google Sheet URL."
+    );
+
+    return;
+  }
+
+
+  status.textContent =
+    "Loading Google Sheet...";
+
+
+  try {
+
+    const response =
+      await fetch(
+        "/api/load",
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type":
+              "application/json"
+          },
+
+          body: JSON.stringify({
+            sheetUrl
+          })
+        }
+      );
+
+
+    const data =
+      await response.json();
+
+
+    if (!response.ok) {
+      throw new Error(
+        data.error
+      );
+    }
+
+
+    currentSheetUrl = sheetUrl;
+    currentHtml = data.html;
+    currentTitle = data.title;
+
+    document.getElementById(
+    "downloadButton"
+    ).disabled = false;
+
+    document.getElementById(
+      "emailTitle"
+    ).textContent =
+      data.title;
+
+
+    document.getElementById(
+      "entryCount"
+    ).textContent =
+      data.entryCount;
+
+
+    document.getElementById(
+      "categoryCount"
+    ).textContent =
+      data.categoryCount;
+
+
+    document.getElementById(
+      "recipientCount"
+    ).textContent =
+      data.recipientCount;
+
+
+    const iframe = document.getElementById("preview");
+
+    iframe.onload = function () {
+        const doc = iframe.contentDocument || iframe.contentWindow.document;
+
+        // Handle all internal anchor links inside the preview
+        doc.querySelectorAll('a[href^="#"]').forEach(link => {
+            link.addEventListener("click", function (event) {
+            event.preventDefault();
+
+            const targetId = this.getAttribute("href").substring(1);
+
+            const target = doc.getElementById(targetId);
+
+            if (target) {
+                target.scrollIntoView({
+                behavior: "smooth",
+                block: "start"
+                });
+            }
+            });
+        });
+    };
+
+    iframe.srcdoc = data.html;
+
+
+    document.getElementById(
+      "newsletterPanel"
+    ).style.display =
+      "block";
+
+
+    status.textContent =
+      "✓ Newsletter loaded.";
+
+  } catch (error) {
+
+    status.textContent =
+      "Error: " +
+      error.message;
+
+  }
+}
+
+
+async function sendTest() {
+
+  if (!currentSheetUrl) {
+
+    alert(
+      "Load a newsletter first."
+    );
+
+    return;
+  }
+
+
+  const testAddress =
+    document.getElementById(
+      "testAddress"
+    ).value.trim();
+
+
+  if (!testAddress) {
+
+    alert(
+      "Enter a test email address."
+    );
+
+    return;
+  }
+
+
+  if (
+    !confirm(
+      "Send test email to " +
+      testAddress +
+      "?"
+    )
+  ) {
+    return;
+  }
+
+
+  const response =
+    await fetch(
+      "/api/send-test",
+      {
+        method: "POST",
+
+        headers: {
+          "Content-Type":
+            "application/json"
+        },
+
+        body: JSON.stringify({
+          sheetUrl:
+            currentSheetUrl,
+
+          testAddress
+        })
+      }
+    );
+
+
+  const data =
+    await response.json();
+
+
+  if (!response.ok) {
+
+    if (
+      response.status === 401
+    ) {
+
+      alert(
+        "Please sign in with Microsoft first."
+      );
+
+      return;
+    }
+
+
+    alert(
+      data.error
+    );
+
+    return;
+  }
+
+
+  alert(
+    "Test email sent."
+  );
+}
+
+
+async function sendNewsletter() {
+
+  if (!currentSheetUrl) {
+
+    alert(
+      "Load the newsletter first."
+    );
+
+    return;
+  }
+
+
+  const firstConfirm =
+    confirm(
+      "This will send the newsletter " +
+      "to ALL addresses in the list tab.\n\n" +
+      "Continue?"
+    );
+
+
+  if (!firstConfirm) {
+    return;
+  }
+
+
+  const secondConfirm =
+    confirm(
+      "Final confirmation:\n\n" +
+      "Have you already sent and checked " +
+      "a test email?"
+    );
+
+
+  if (!secondConfirm) {
+    return;
+  }
+
+
+  const response =
+    await fetch(
+      "/api/send",
+      {
+        method: "POST",
+
+        headers: {
+          "Content-Type":
+            "application/json"
+        },
+
+        body: JSON.stringify({
+          sheetUrl:
+            currentSheetUrl
+        })
+      }
+    );
+
+
+  const data =
+    await response.json();
+
+
+  if (!response.ok) {
+
+    if (
+      response.status === 401
+    ) {
+
+      alert(
+        "Please sign in with Microsoft first."
+      );
+
+      return;
+    }
+
+
+    alert(
+      data.error
+    );
+
+    return;
+  }
+
+
+  alert(
+    "Newsletter sent to " +
+    data.recipientCount +
+    " recipients."
+  );
+
+}
+
+function downloadHtml() {
+  if (!currentHtml) {
+    alert("Please load a newsletter first.");
+    return;
+  }
+
+  const blob = new Blob(
+    [currentHtml],
+    {
+      type: "text/html;charset=utf-8"
+    }
+  );
+
+  const url = URL.createObjectURL(blob);
+
+  const link = document.createElement("a");
+
+  link.href = url;
+
+  // Make the newsletter title safe as a filename
+  const safeTitle = currentTitle
+    .replace(/[\/\\:*?"<>|]/g, "-")
+    .trim();
+
+  link.download =
+    (safeTitle || "CIT Info-Mail") + ".html";
+
+  document.body.appendChild(link);
+
+  link.click();
+
+  document.body.removeChild(link);
+
+  URL.revokeObjectURL(url);
+}
+
+</script>
+
+</body>
+
+</html>
